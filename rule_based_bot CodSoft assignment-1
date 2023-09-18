@@ -1,0 +1,101 @@
+# @title importings packages
+
+import nltk
+import numpy as np
+import random
+import string
+
+import bs4 as bs
+import requests
+import re
+
+import warnings
+warnings.filterwarnings = False
+
+
+# @title Methods
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+nltk.download('punkt')
+nltk.download('wordnet')
+
+# @title retrieve data from wikipedia
+data = requests.get('https://en.wikipedia.org/wiki/Anime')
+raw_html = data.text
+data.text
+
+content_html = bs.BeautifulSoup(raw_html)
+content_paras = content_html.find_all('p')
+content_text = ""
+
+for para in content_paras:
+  content_text += para.text
+
+content_text = content_text.lower()
+
+content_text = re.sub(r'\[[0-9]*\]',' ', content_text)
+content_text = re.sub(r'\s+', ' ', content_text)
+
+content_sentences = nltk.sent_tokenize(content_text)
+content_words = nltk.word_tokenize(content_text)
+
+greet_input = ("hey", "hello", "good morning", "good afternoon", "what up", "hi", "morning", "evening", "yo")
+greet_response = ("hey dude", "hey", "hello", "hi", "Hello, what's up", "yo")
+
+
+def greet_respond(greet):
+  for welcome in greet.split():
+    if welcome.lower() in greet_input:
+      return random.choice(greet_response)
+
+_lemmatizer = nltk.stem.WordNetLemmatizer()
+
+def lemmatize_content(key):
+  return [_lemmatizer.lemmatize(welcome) for welcome in key]
+
+punct_removal_dict = dict((ord(punctuation), None) for punctuation in string.punctuation)
+
+def get_processed_text(document):
+  return lemmatize_content(nltk.word_tokenize(document.lower().translate(punct_removal_dict)))
+dict((ord(punctuation), None) for punctuation in string.punctuation)
+def respond(user_input):
+  bot_respond = ''
+  content_sentences.append(user_input)
+
+  word_vectorization = TfidfVectorizer(tokenizer=get_processed_text, stop_words = 'english')
+
+  content_word_vectors = word_vectorization.fit_transform(content_sentences)
+  cs_vector = cosine_similarity(content_word_vectors[-1], content_word_vectors)
+  similar_respond_idx = cs_vector.argsort()[0][-2]
+  matched_vector = cs_vector.flatten()
+  matched_vector.sort()
+  vector_matched = matched_vector[-2]
+
+  if vector_matched == 0:
+    bot_respond = bot_respond + "Oh oh sorry, what is it, again?"
+    return bot_respond
+
+  else:
+    bot_respond = bot_respond + content_sentences[similar_respond_idx]
+    return bot_respond
+chat = True
+print("Hello, I am here to tell you about anime!.What do you want to know?")
+while(chat==True):
+  user_query = input()
+  user_query = user_query.lower()
+  if user_query != "quit":
+    if user_query == "thanks" or user_query == "thank you" or user_query == "tq":
+      chat = False
+      print("AniBot: You are Welcome!")
+    else:
+      if greet_respond(user_query) != None:
+        print("AniBot: " + greet_respond(user_query))
+
+      else:
+        print("AniBot: ", end="")
+        print(respond(user_query))
+        content_sentences.remove(user_query)
+  else:
+    chat = False
+    print("AniBot: Good bye!")
